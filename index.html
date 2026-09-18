@@ -371,7 +371,16 @@
   .calc-result.profit .cr-value.pos{ color:var(--green); }
   .calc-result.profit .cr-value.neg{ color:var(--red); }
   .calc-note{ margin-top:14px; font-size:10.5px; color:var(--text-faint); line-height:1.5; }
+
+  .sync-badge{ display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--text-faint); }
+  .sync-badge .dot2{ width:7px; height:7px; border-radius:50%; background:var(--text-faint); flex:none; }
+  .sync-badge.ok .dot2{ background:var(--green); box-shadow:0 0 6px var(--green); }
+  .sync-badge.saving .dot2{ background:var(--gold); animation:pulseDot 1s ease-in-out infinite; }
+  .sync-badge.err .dot2{ background:var(--red); }
+  @keyframes pulseDot{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
 </style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
 <div id="gate">
   <div class="gate-card">
@@ -490,7 +499,8 @@
   <section class="panel">
     <div class="panel-head">
       <div class="panel-title"><span class="sw"></span> Registro de operaciones</div>
-      <div style="display:flex; gap:8px;">
+      <div style="display:flex; gap:14px; align-items:center;">
+        <span class="sync-badge" id="sync-badge"><span class="dot2"></span><span id="sync-text">Conectando…</span></span>
         <button class="btn primary" id="add-row">+ Nueva operación</button>
       </div>
     </div>
@@ -582,8 +592,30 @@
   "use strict";
   var USERNAME = "davidjzegarra";
   var PASSWORD = "70507024";
-  var STORAGE_KEY = "bz_trading_rows_v1";
   var SESSION_KEY = "bz_session_v1";
+
+  /* ---------- Supabase (sincronización entre dispositivos) ---------- */
+  var SUPABASE_URL = "https://woqakcriwqvipgfugzuv.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvcWFrY3Jpd3F2aXBnZnVnenV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3Mzc5NDMsImV4cCI6MjEwNTMxMzk0M30.tk-5GXD8I_iEaHlXOJPJypWL2d3Ne_zBbGO0kukTy3k";
+  var sb = (window.supabase && window.supabase.createClient)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  function genId(){
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return "id-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+  }
+
+  function setSyncState(state){
+    var badge = document.getElementById("sync-badge");
+    var text = document.getElementById("sync-text");
+    if (!badge || !text) return;
+    badge.className = "sync-badge " + state;
+    text.textContent = state === "ok" ? "Sincronizado"
+      : state === "saving" ? "Guardando…"
+      : state === "err" ? "Sin conexión — guardado local"
+      : "Conectando…";
+  }
 
   var QUOTES = [
     {t:"El mejor momento para plantar un árbol fue hace 20 años. El segundo mejor momento es ahora.", a:"Proverbio chino"},
@@ -670,19 +702,77 @@
     { pair:"EURUSD", entry:"", tp:"", sl:"", gan:"", perd:"", close:"", result:"", balance:"", broker:"", comment:"" }
   ];
 
-  function loadRows(){
+  var rows = [];
+  var LOCAL_FALLBACK_KEY = "bz_trading_rows_v1";
+
+  function loadLocalFallback(){
     try{
-      var raw = localStorage.getItem(STORAGE_KEY);
+      var raw = localStorage.getItem(LOCAL_FALLBACK_KEY);
       if (raw) return JSON.parse(raw);
     }catch(e){}
-    return DEFAULT_ROWS.slice();
+    return null;
+  }
+  function saveLocalFallback(rows){
+    try{ localStorage.setItem(LOCAL_FALLBACK_KEY, JSON.stringify(rows)); }catch(e){}
   }
 
-  function saveRows(rows){
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(rows)); }catch(e){}
+  function rowFromDb(r){
+    return { id:r.id, pair:r.pair, entry:r.entry, tp:r.tp, sl:r.sl, gan:r.gan, perd:r.perd, close:r.close, result:r.result, balance:r.balance, broker:r.broker, comment:r.comment };
   }
 
-  var rows = loadRows();
+  async function fetchRowsFromCloud(){
+    if (!sb) return null;
+    try{
+      var res = await sb.from("trading_rows").select("*").order("sort_order", { ascending:true });
+      if (res.error) throw res.error;
+      return res.data.map(rowFromDb);
+    }catch(e){
+      return null;
+    }
+  }
+
+  async function loadRows(){
+    var fromCloud = await fetchRowsFromCloud();
+    if (fromCloud){
+      setSyncState("ok");
+      if (fromCloud.length) return fromCloud;
+      // tabla vacía en Supabase: sembrar con filas por defecto
+      var seed = DEFAULT_ROWS.map(function(r){ return Object.assign({ id: genId() }, r); });
+      await persistToCloud(seed);
+      return seed;
+    }
+    setSyncState("err");
+    var local = loadLocalFallback();
+    if (local && local.length) return local.map(function(r){ return Object.assign({ id: r.id || genId() }, r); });
+    return DEFAULT_ROWS.map(function(r){ return Object.assign({ id: genId() }, r); });
+  }
+
+  async function persistToCloud(list){
+    saveLocalFallback(list);
+    if (!sb){ setSyncState("err"); return; }
+    setSyncState("saving");
+    try{
+      var payload = list.map(function(r, i){
+        return {
+          id: r.id || genId(),
+          sort_order: i,
+          pair: r.pair||"", entry: r.entry||"", tp: r.tp||"", sl: r.sl||"",
+          gan: r.gan||"", perd: r.perd||"", close: r.close||"", result: r.result||"",
+          balance: r.balance||"", broker: r.broker||"", comment: r.comment||"",
+          updated_at: new Date().toISOString()
+        };
+      });
+      var del = await sb.from("trading_rows").delete().not("id", "is", null);
+      if (del.error) throw del.error;
+      if (payload.length){
+        var ins = await sb.from("trading_rows").insert(payload);
+        if (ins.error) throw ins.error;
+      }
+      setSyncState("ok");
+    }catch(e){
+      setSyncState("err");
+    }
+  }
 
   function readRowsFromDOM(){
     var trs = document.querySelectorAll("#op-tbody tr");
@@ -691,6 +781,7 @@
       var cells = tr.querySelectorAll("td[contenteditable]");
       var select = tr.querySelector("select");
       out.push({
+        id: tr.dataset.id,
         pair: cells[0].textContent.trim(),
         entry: cells[1].textContent.trim(),
         tp: cells[2].textContent.trim(),
@@ -707,16 +798,22 @@
     return out;
   }
 
+  var persistTimer = null;
   function persist(){
     rows = readRowsFromDOM();
-    saveRows(rows);
     renderStats();
+    clearTimeout(persistTimer);
+    setSyncState("saving");
+    persistTimer = setTimeout(function(){
+      persistToCloud(rows).then(function(){ persistTimer = null; });
+    }, 700);
   }
 
   function ph(txt){ return txt ? "" : ""; }
 
   function makeRow(row){
     var tr = document.createElement("tr");
+    tr.dataset.id = row.id || genId();
     tr.innerHTML =
       '<td contenteditable="true" data-ph="ej. XAUUSD" class="pair-cell">'+escapeHtml(row.pair||"")+'</td>'+
       '<td contenteditable="true" data-ph="0.00">'+escapeHtml(row.entry||"")+'</td>'+
@@ -1060,9 +1157,25 @@
     });
   }
 
-  function boot(){
-    renderTable();
-    renderStats();
+  function isEditingCell(){
+    var ae = document.activeElement;
+    return !!(ae && ae.matches && ae.matches('td[contenteditable]'));
+  }
+
+  async function refreshFromCloud(){
+    if (isEditingCell() || persistTimer) return; // no interrumpir edición o guardado en curso
+    var fresh = await fetchRowsFromCloud();
+    if (fresh){
+      setSyncState("ok");
+      rows = fresh;
+      renderTable();
+      renderStats();
+    } else {
+      setSyncState("err");
+    }
+  }
+
+  async function boot(){
     renderQuote();
     updateClock();
     setInterval(updateClock, 1000);
@@ -1076,6 +1189,16 @@
 
     wireCalc();
     wireWidgets();
+
+    rows = await loadRows();
+    renderTable();
+    renderStats();
+
+    window.addEventListener("focus", refreshFromCloud);
+    document.addEventListener("visibilitychange", function(){
+      if (!document.hidden) refreshFromCloud();
+    });
+    setInterval(refreshFromCloud, 12000);
   }
 
   function showApp(){
