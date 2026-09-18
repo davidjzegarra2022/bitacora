@@ -499,8 +499,11 @@
   <section class="panel">
     <div class="panel-head">
       <div class="panel-title"><span class="sw"></span> Registro de operaciones</div>
-      <div style="display:flex; gap:14px; align-items:center;">
+      <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
         <span class="sync-badge" id="sync-badge"><span class="dot2"></span><span id="sync-text">Conectando…</span></span>
+        <button class="btn" id="backup-btn" title="Descargar una copia de seguridad en tu dispositivo">⬇ Backup</button>
+        <button class="btn" id="restore-btn" title="Restaurar datos desde un archivo de backup">⬆ Restaurar</button>
+        <input type="file" id="restore-file" accept="application/json" hidden />
         <button class="btn primary" id="add-row">+ Nueva operación</button>
       </div>
     </div>
@@ -886,6 +889,84 @@
     var tbody = document.getElementById("op-tbody");
     tbody.appendChild(makeRow({pair:"",entry:"",tp:"",sl:"",gan:"",perd:"",close:"",result:"",balance:"",broker:"",comment:""}));
     persist();
+  });
+
+  /* ---------- backup / restauración ---------- */
+  function pad2(n){ return n < 10 ? "0"+n : ""+n; }
+
+  function downloadBackup(){
+    var current = readRowsFromDOM();
+    var payload = {
+      app: "Bitácora de Trading",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      rows: current
+    };
+    var json = JSON.stringify(payload, null, 2);
+    var blob = new Blob([json], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var now = new Date();
+    var fname = "bitacora-trading-backup-" + now.getFullYear() + pad2(now.getMonth()+1) + pad2(now.getDate()) + "-" + pad2(now.getHours()) + pad2(now.getMinutes()) + ".json";
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+  }
+
+  function normalizeImportedRow(r){
+    return {
+      id: (typeof r.id === "string" && r.id) ? r.id : genId(),
+      pair: r.pair || "", entry: r.entry || "", tp: r.tp || "", sl: r.sl || "",
+      gan: r.gan || "", perd: r.perd || "", close: r.close || "", result: r.result || "",
+      balance: r.balance || "", broker: r.broker || "", comment: r.comment || ""
+    };
+  }
+
+  async function restoreFromFile(file){
+    var text;
+    try{
+      text = await file.text();
+    }catch(e){
+      alert("No se pudo leer el archivo seleccionado.");
+      return;
+    }
+    var parsed;
+    try{
+      parsed = JSON.parse(text);
+    }catch(e){
+      alert("El archivo no es un backup válido (JSON inválido).");
+      return;
+    }
+    var incoming = Array.isArray(parsed) ? parsed : parsed.rows;
+    if (!Array.isArray(incoming)){
+      alert("El archivo no contiene un backup reconocible de la Bitácora de Trading.");
+      return;
+    }
+    var count = incoming.length;
+    var ok = window.confirm(
+      "Vas a restaurar " + count + " operación(es) desde este backup.\n\n" +
+      "Esto REEMPLAZARÁ todas las filas actuales del registro (en este dispositivo y en la nube). ¿Continuar?"
+    );
+    if (!ok) return;
+
+    var normalized = incoming.map(normalizeImportedRow);
+    rows = normalized;
+    renderTable();
+    renderStats();
+    await persistToCloud(rows);
+  }
+
+  document.getElementById("backup-btn").addEventListener("click", downloadBackup);
+  document.getElementById("restore-btn").addEventListener("click", function(){
+    document.getElementById("restore-file").click();
+  });
+  document.getElementById("restore-file").addEventListener("change", function(e){
+    var file = e.target.files && e.target.files[0];
+    if (file) restoreFromFile(file);
+    e.target.value = "";
   });
 
   /* ---------- sesiones de mercado (24h) ---------- */
