@@ -1,0 +1,1227 @@
+<title>Bitácora de Trading</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0e0d;
+    --bg-grid:#0d1211;
+    --surface:#121816;
+    --surface-2:#171f1c;
+    --border:#243230;
+    --border-soft:#1c2624;
+    --text:#e9efec;
+    --text-dim:#93a29c;
+    --text-faint:#5c6d67;
+    --gold:#d6ae66;
+    --gold-dim:#8a7040;
+    --green:#48d89a;
+    --green-dim:#1d3b2f;
+    --red:#ff6b6b;
+    --red-dim:#3d2020;
+    --shadow: 0 20px 60px rgba(0,0,0,0.5);
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(214,174,102,0.07), transparent 60%),
+      radial-gradient(1000px 500px at 100% 0%, rgba(72,216,154,0.06), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Mono', ui-monospace, monospace;
+    margin:0;
+    min-height:100%;
+    padding-inline:16px;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{ font-family:'Sora', ui-sans-serif, system-ui, sans-serif; }
+  ::selection{ background:var(--gold-dim); color:#fff; }
+
+  /* ---------- LOGIN GATE ---------- */
+  #gate{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding-block: max(24px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-bottom, 0px));
+  }
+  .gate-card{
+    width:100%;
+    max-width:400px;
+    background:linear-gradient(180deg, var(--surface-2), var(--surface));
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:36px 30px;
+    box-shadow:var(--shadow);
+    position:relative;
+    overflow:hidden;
+  }
+  .gate-card::before{
+    content:"";
+    position:absolute; inset:0 0 auto 0; height:3px;
+    background:linear-gradient(90deg, var(--gold), var(--green));
+  }
+  .gate-eyebrow{
+    font-size:11px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--gold); font-weight:600; margin-bottom:10px;
+  }
+  .gate-title{ font-size:26px; font-weight:800; margin:0 0 6px; letter-spacing:-0.01em; text-wrap:balance; }
+  .gate-sub{ color:var(--text-dim); font-size:13px; margin:0 0 28px; line-height:1.5; }
+  .field{ margin-bottom:16px; }
+  .field label{
+    display:block; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--text-faint); margin-bottom:7px;
+  }
+  .field input{
+    width:100%; background:var(--bg); border:1px solid var(--border);
+    border-radius:9px; padding:12px 13px; color:var(--text);
+    font-family:'IBM Plex Mono', monospace; font-size:14px; outline:none;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .field input:focus{ border-color:var(--gold); box-shadow:0 0 0 3px rgba(214,174,102,0.15); }
+  #gate-error{
+    color:var(--red); font-size:12.5px; margin:-4px 0 16px; min-height:16px;
+  }
+  .gate-btn{
+    width:100%; padding:13px; border-radius:9px; border:none; cursor:pointer;
+    background:linear-gradient(90deg, var(--gold), #c99a4a); color:#1a1408;
+    font-family:'Sora', sans-serif; font-weight:700; font-size:14px; letter-spacing:.02em;
+    transition:transform .12s, filter .12s;
+  }
+  .gate-btn:hover{ filter:brightness(1.08); }
+  .gate-btn:active{ transform:scale(0.98); }
+  .gate-foot{
+    margin-top:22px; text-align:center; font-size:11px; color:var(--text-faint);
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .dot{ width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); }
+
+  /* ---------- ACCESS ANIMATION ---------- */
+  .access-overlay{
+    position:fixed; inset:0; z-index:50; display:none;
+    align-items:center; justify-content:center;
+    padding-inline:16px;
+    background:radial-gradient(1200px 700px at 50% 0%, rgba(72,216,154,0.06), transparent 60%), rgba(5,8,7,0.94);
+    backdrop-filter:blur(6px);
+  }
+  .access-overlay.show{ display:flex; }
+  .access-overlay.flash-tp{ animation:flashTP .5s ease-out; }
+  .access-overlay.flash-sl{ animation:flashSL .5s ease-out; }
+  @keyframes flashTP{ 0%{ background-color:rgba(72,216,154,0.24); } 100%{ background-color:transparent; } }
+  @keyframes flashSL{ 0%{ background-color:rgba(255,107,107,0.24); } 100%{ background-color:transparent; } }
+  .access-panel{
+    width:100%; max-width:420px; text-align:center;
+    background:linear-gradient(180deg, var(--surface-2), var(--surface));
+    border:1px solid var(--border); border-radius:18px;
+    padding:26px 24px 22px; box-shadow:var(--shadow);
+    animation:panelIn .35s ease-out;
+  }
+  @keyframes panelIn{ from{ opacity:0; transform:translateY(8px) scale(.97);} to{ opacity:1; transform:none; } }
+  .access-eyebrow{ font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-faint); margin-bottom:6px; }
+  .access-label{
+    font-family:'Sora',sans-serif; font-size:14px; font-weight:700; letter-spacing:.02em;
+    color:var(--gold); margin-bottom:14px; min-height:20px; transition:color .2s;
+  }
+  .access-chart-wrap{ position:relative; }
+  .access-chart{ width:100%; height:150px; display:block; overflow:visible; }
+  .level-line{ stroke:var(--border); stroke-width:1; stroke-dasharray:4 4; }
+  .tp-line{ stroke:var(--green); opacity:.55; }
+  .sl-line{ stroke:var(--red); opacity:.55; }
+  .level-text{ font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.04em; }
+  .tp-text{ fill:var(--green); }
+  .sl-text{ fill:var(--red); }
+  .access-path{ fill:none; stroke:var(--gold); stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
+  .access-dot{ fill:var(--gold); filter:drop-shadow(0 0 6px var(--gold)); }
+  .badge{
+    position:absolute; padding:4px 10px; border-radius:20px;
+    font-family:'Sora',sans-serif; font-size:10.5px; font-weight:700; letter-spacing:.03em;
+    opacity:0; transform:translateY(6px) scale(.85); transition:opacity .25s ease-out, transform .25s ease-out;
+    white-space:nowrap; pointer-events:none;
+  }
+  .badge.show{ opacity:1; transform:translateY(0) scale(1); }
+  .badge-tp{ left:54%; top:2%; background:var(--green-dim); color:var(--green); border:1px solid var(--green); }
+  .badge-sl{ left:80%; top:80%; background:var(--red-dim); color:var(--red); border:1px solid var(--red); }
+  .access-status{ margin-top:14px; font-size:11px; color:var(--text-faint); letter-spacing:.05em; }
+  .access-status.ok{ color:var(--green); }
+
+  /* ---------- APP ---------- */
+  #app{ display:none; max-width:980px; margin:0 auto; padding-block: max(20px, env(safe-area-inset-top,0px)) 60px; }
+  header.top{
+    display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; justify-content:space-between;
+    padding:20px 22px; margin-bottom:18px;
+    background:linear-gradient(180deg, var(--surface-2), var(--surface));
+    border:1px solid var(--border); border-radius:16px;
+  }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand-mark{
+    width:40px; height:40px; border-radius:10px;
+    background:linear-gradient(135deg, var(--gold), var(--green));
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Sora',sans-serif; font-weight:800; color:#0a0e0d; font-size:16px;
+  }
+  .brand-name{ font-family:'Sora',sans-serif; font-weight:700; font-size:16px; }
+  .brand-tag{ font-size:11px; color:var(--text-faint); letter-spacing:.04em; }
+  .clock-box{ text-align:right; }
+  .clock-time{ font-size:24px; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:.02em; }
+  .clock-date{ font-size:11.5px; color:var(--text-dim); text-transform:capitalize; }
+  .greeting{
+    margin-top:2px;
+    font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--gold); font-weight:600;
+  }
+
+  .quote-card{
+    display:flex; gap:16px; align-items:flex-start;
+    padding:20px 22px; margin-bottom:18px;
+    background:var(--surface); border:1px solid var(--border-soft); border-left:3px solid var(--green);
+    border-radius:14px;
+  }
+  .quote-mark{ font-family:'Sora',sans-serif; font-size:34px; line-height:1; color:var(--green); font-weight:800; }
+  .quote-text{ font-family:'Sora',sans-serif; font-size:15.5px; line-height:1.5; color:var(--text); text-wrap:balance; }
+  .quote-author{ margin-top:8px; font-size:11.5px; color:var(--text-faint); letter-spacing:.03em; }
+  .quote-idx{ margin-left:auto; font-size:10.5px; color:var(--text-faint); white-space:nowrap; padding-top:4px; }
+
+  section.panel{
+    background:var(--surface); border:1px solid var(--border-soft); border-radius:14px;
+    padding:20px 20px 22px; margin-bottom:18px;
+  }
+  .panel-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+  .panel-title{ font-family:'Sora',sans-serif; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; }
+  .panel-title .sw{ width:8px; height:8px; border-radius:2px; background:var(--gold); }
+  .btn{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; font-weight:500;
+    padding:8px 13px; border-radius:8px; border:1px solid var(--border); background:var(--surface-2);
+    color:var(--text); cursor:pointer; transition:border-color .15s, color .15s;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn:hover{ border-color:var(--gold); color:var(--gold); }
+  .btn.primary{ background:var(--green-dim); border-color:var(--green); color:var(--green); }
+  .btn.primary:hover{ filter:brightness(1.15); }
+  .btn.danger{ background:transparent; }
+  .btn.danger:hover{ border-color:var(--red); color:var(--red); }
+
+  .table-wrap{ overflow-x:auto; border-radius:10px; border:1px solid var(--border-soft); }
+  table{ border-collapse:collapse; width:100%; min-width:1180px; font-size:12.5px; }
+  thead th{
+    text-align:left; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:10.5px;
+    letter-spacing:.05em; text-transform:uppercase; color:var(--text-dim);
+    background:var(--surface-2); padding:11px 12px; border-bottom:1px solid var(--border);
+    white-space:nowrap; position:sticky; top:0;
+  }
+  thead th.sl-col{ color:var(--red); }
+  thead th.tp-col, thead th.gan-col{ color:var(--green); }
+  thead th.perd-col{ color:var(--red); }
+  tbody td{
+    padding:10px 12px; border-bottom:1px solid var(--border-soft);
+    color:var(--text); vertical-align:top; min-width:110px;
+  }
+  tbody td.comment-col{ min-width:200px; }
+  tbody tr:nth-child(odd){ background:rgba(255,255,255,0.012); }
+  tbody tr:hover{ background:rgba(214,174,102,0.045); }
+  td[contenteditable]{ outline:none; cursor:text; border-radius:5px; transition:background .12s; }
+  td[contenteditable]:focus{ background:rgba(214,174,102,0.09); box-shadow:0 0 0 1px var(--gold) inset; }
+  td[contenteditable]:empty::before{ content:attr(data-ph); color:var(--text-faint); }
+  .pair-cell{ font-family:'Sora',sans-serif; font-weight:700; letter-spacing:.02em; color:var(--gold); }
+  .tp-cell{ color:var(--green); font-weight:600; }
+  .sl-cell{ color:var(--red); font-weight:600; }
+  select.result-select{
+    background:var(--bg); border:1px solid var(--border); color:var(--text-dim);
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; border-radius:6px; padding:5px 7px;
+  }
+  select.result-select[data-v="TP"]{ color:var(--green); border-color:var(--green-dim); }
+  select.result-select[data-v="SL"]{ color:var(--red); border-color:var(--red-dim); }
+  .row-actions{ text-align:center; width:36px; }
+  .del-row{ background:none; border:none; color:var(--text-faint); cursor:pointer; font-size:15px; line-height:1; padding:4px; }
+  .del-row:hover{ color:var(--red); }
+
+  .stats-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:18px; }
+  .stat{
+    background:var(--surface); border:1px solid var(--border-soft); border-radius:12px;
+    padding:14px 16px;
+  }
+  .stat-label{ font-size:10px; letter-spacing:.07em; text-transform:uppercase; color:var(--text-faint); margin-bottom:6px; }
+  .stat-value{ font-family:'Sora',sans-serif; font-size:20px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .stat.green .stat-value{ color:var(--green); }
+  .stat.gold .stat-value{ color:var(--gold); }
+
+  footer.foot{ text-align:center; padding:18px 0 4px; color:var(--text-faint); font-size:11px; }
+  footer.foot button{
+    background:none; border:none; color:var(--text-faint); text-decoration:underline;
+    cursor:pointer; font-family:inherit; font-size:11px;
+  }
+  footer.foot button:hover{ color:var(--red); }
+
+  @media (max-width:640px){
+    header.top{ flex-direction:column; }
+    .clock-box{ text-align:left; }
+  }
+
+  /* ---------- TOOLBAR ---------- */
+  .toolbar{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:18px; }
+  .tool-btn{
+    flex:1; min-width:220px; display:flex; align-items:center; gap:12px;
+    padding:14px 16px; border-radius:14px; cursor:pointer; text-align:left;
+    background:linear-gradient(135deg, rgba(214,174,102,0.14), rgba(72,216,154,0.08));
+    border:1px solid var(--gold-dim); color:var(--text);
+    font-family:'IBM Plex Mono', monospace; transition:border-color .15s, transform .1s;
+  }
+  .tool-btn:hover{ border-color:var(--gold); transform:translateY(-1px); }
+  .tool-btn:active{ transform:translateY(0); }
+  .tool-btn .tool-ico{
+    width:38px; height:38px; border-radius:10px; flex:none;
+    background:linear-gradient(135deg, var(--gold), var(--green));
+    display:flex; align-items:center; justify-content:center; font-size:18px;
+  }
+  .tool-btn .tool-name{ font-family:'Sora',sans-serif; font-weight:700; font-size:13.5px; color:var(--text); }
+  .tool-btn .tool-sub{ font-size:10.5px; color:var(--text-faint); margin-top:2px; }
+
+  /* ---------- MARKET SESSIONS WIDGET ---------- */
+  .sessions-grid{ display:grid; grid-template-columns:260px 1fr; gap:20px; align-items:center; }
+  @media (max-width:720px){ .sessions-grid{ grid-template-columns:1fr; } }
+  .sclock-wrap{ display:flex; justify-content:center; }
+  .sclock{ width:100%; max-width:240px; height:auto; }
+  .sclock-face{ fill:var(--bg); stroke:var(--border); stroke-width:2; }
+  .sclock-tick{ stroke:var(--border-soft); stroke-width:1; }
+  .sclock-arc{ fill:none; stroke-width:11; opacity:.85; }
+  .sclock-hand{ stroke:var(--gold); stroke-width:2.5; stroke-linecap:round; filter:drop-shadow(0 0 4px rgba(214,174,102,.6)); }
+  .sclock-hub{ fill:var(--gold); }
+  .sclock-label{ font-family:'IBM Plex Mono',monospace; font-size:7.5px; fill:var(--text-faint); letter-spacing:.03em; }
+  .sess-list{ display:flex; flex-direction:column; gap:9px; }
+  .sess-row{
+    display:flex; align-items:center; gap:10px; padding:9px 12px;
+    background:var(--surface-2); border:1px solid var(--border-soft); border-radius:10px;
+  }
+  .sess-dot{ width:9px; height:9px; border-radius:50%; flex:none; background:var(--text-faint); }
+  .sess-row.open .sess-dot{ background:var(--green); box-shadow:0 0 7px var(--green); }
+  .sess-name{ font-family:'Sora',sans-serif; font-weight:700; font-size:12.5px; min-width:100px; }
+  .sess-hours{ font-size:11px; color:var(--text-faint); flex:1; }
+  .sess-state{ font-size:10px; letter-spacing:.05em; text-transform:uppercase; padding:3px 9px; border-radius:20px; font-weight:600; background:var(--border-soft); color:var(--text-faint); }
+  .sess-row.open .sess-state{ background:var(--green-dim); color:var(--green); }
+  .utc-now{ text-align:center; margin-top:14px; font-size:11px; color:var(--text-faint); font-variant-numeric:tabular-nums; }
+
+  /* ---------- PAIRS WIDGET ---------- */
+  .pairs-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
+  .pair-card{
+    background:var(--surface-2); border:1px solid var(--border-soft); border-radius:12px;
+    padding:12px 13px; display:flex; flex-direction:column; gap:6px;
+  }
+  .pair-card .pc-sym{ font-family:'Sora',sans-serif; font-weight:700; font-size:13px; color:var(--gold); }
+  .pair-card .pc-sessions{ font-size:10px; color:var(--text-faint); letter-spacing:.02em; }
+  .pc-liq{ font-size:9.5px; letter-spacing:.05em; text-transform:uppercase; font-weight:700; padding:3px 8px; border-radius:20px; align-self:flex-start; }
+  .pc-liq.high{ background:var(--green-dim); color:var(--green); }
+  .pc-liq.mid{ background:rgba(214,174,102,0.16); color:var(--gold); }
+  .pc-liq.low{ background:var(--border-soft); color:var(--text-faint); }
+
+  /* ---------- ECONOMIC CALENDAR ---------- */
+  .cal-list{ display:flex; flex-direction:column; gap:8px; }
+  .cal-row{
+    display:grid; grid-template-columns:64px 44px 1fr 70px; gap:10px; align-items:center;
+    padding:9px 12px; background:var(--surface-2); border:1px solid var(--border-soft); border-radius:10px; font-size:12px;
+  }
+  @media (max-width:560px){ .cal-row{ grid-template-columns:52px 36px 1fr; } .cal-row .cal-cur{ display:none; } }
+  .cal-day{ color:var(--text-faint); font-size:10.5px; text-transform:uppercase; letter-spacing:.03em; }
+  .cal-time{ font-variant-numeric:tabular-nums; color:var(--text-dim); }
+  .cal-event{ color:var(--text); }
+  .cal-cur{ font-size:10.5px; color:var(--text-faint); text-align:right; }
+  .cal-impact{ display:inline-flex; gap:2px; margin-right:7px; vertical-align:middle; }
+  .cal-impact i{ width:5px; height:5px; border-radius:50%; background:var(--border-soft); display:inline-block; }
+  .cal-impact.high i{ background:var(--red); }
+  .cal-impact.medium i:nth-child(-n+2){ background:var(--gold); }
+  .cal-impact.low i:nth-child(1){ background:var(--text-faint); }
+  .cal-note{ font-size:10.5px; color:var(--text-faint); margin-top:10px; line-height:1.5; }
+  .cal-note a{ color:var(--gold); }
+
+  /* ---------- CALCULATOR MODAL ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; z-index:60; display:none; align-items:flex-start; justify-content:center;
+    background:rgba(5,8,7,0.72); backdrop-filter:blur(4px); padding:24px 16px;
+    overflow-y:auto;
+  }
+  .modal-overlay.show{ display:flex; }
+  .modal-card{
+    width:100%; max-width:560px; background:linear-gradient(180deg, var(--surface-2), var(--surface));
+    border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow);
+    animation:panelIn .25s ease-out; margin-top:2vh;
+  }
+  .modal-head{ display:flex; align-items:center; justify-content:space-between; padding:18px 20px; border-bottom:1px solid var(--border-soft); }
+  .modal-title{ font-family:'Sora',sans-serif; font-weight:700; font-size:15px; display:flex; align-items:center; gap:9px; }
+  .modal-close{ background:none; border:none; color:var(--text-faint); font-size:20px; cursor:pointer; line-height:1; padding:4px; }
+  .modal-close:hover{ color:var(--red); }
+  .modal-body{ padding:20px; }
+  .calc-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:460px){ .calc-grid{ grid-template-columns:1fr; } }
+  .calc-field label{ display:block; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-faint); margin-bottom:6px; }
+  .calc-field select, .calc-field input{
+    width:100%; background:var(--bg); border:1px solid var(--border); border-radius:9px;
+    padding:10px 12px; color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:13px; outline:none;
+  }
+  .calc-field select:focus, .calc-field input:focus{ border-color:var(--gold); }
+  .dir-toggle{ display:flex; gap:8px; }
+  .dir-btn{
+    flex:1; padding:10px; border-radius:9px; border:1px solid var(--border); background:var(--bg);
+    color:var(--text-dim); font-family:'IBM Plex Mono',monospace; font-size:12.5px; font-weight:600; cursor:pointer;
+  }
+  .dir-btn.active[data-dir="buy"]{ background:var(--green-dim); border-color:var(--green); color:var(--green); }
+  .dir-btn.active[data-dir="sell"]{ background:var(--red-dim); border-color:var(--red); color:var(--red); }
+  .calc-results{ margin-top:18px; display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .calc-result{ background:var(--surface-2); border:1px solid var(--border-soft); border-radius:12px; padding:12px 14px; }
+  .calc-result .cr-label{ font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-faint); margin-bottom:5px; }
+  .calc-result .cr-value{ font-family:'Sora',sans-serif; font-size:17px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .calc-result.profit .cr-value.pos{ color:var(--green); }
+  .calc-result.profit .cr-value.neg{ color:var(--red); }
+  .calc-note{ margin-top:14px; font-size:10.5px; color:var(--text-faint); line-height:1.5; }
+</style>
+
+<div id="gate">
+  <div class="gate-card">
+    <div class="gate-eyebrow">Acceso restringido</div>
+    <h1 class="gate-title">Bitácora de Trading</h1>
+    <p class="gate-sub">Portal cautivo del sistema de registro de operaciones. Ingresa tus credenciales para continuar.</p>
+    <form id="gate-form" autocomplete="off">
+      <div class="field">
+        <label for="user">Usuario</label>
+        <input type="text" id="user" autocomplete="off" spellcheck="false" />
+      </div>
+      <div class="field">
+        <label for="pass">Contraseña</label>
+        <input type="password" id="pass" autocomplete="off" />
+      </div>
+      <div id="gate-error"></div>
+      <button type="submit" class="gate-btn">Entrar al sistema</button>
+    </form>
+    <div class="gate-foot"><span class="dot"></span> Conexión local · sesión de este dispositivo</div>
+  </div>
+</div>
+
+<div id="access-overlay" class="access-overlay" aria-hidden="true">
+  <div class="access-panel">
+    <div class="access-eyebrow">Validando credenciales</div>
+    <div class="access-label" id="access-label">Simulando operación de acceso…</div>
+    <div class="access-chart-wrap">
+      <svg class="access-chart" viewBox="0 0 400 170" preserveAspectRatio="none">
+        <line x1="0" y1="26" x2="400" y2="26" class="level-line tp-line"/>
+        <text x="4" y="18" class="level-text tp-text">TP</text>
+        <line x1="0" y1="142" x2="400" y2="142" class="level-line sl-line"/>
+        <text x="4" y="156" class="level-text sl-text">SL</text>
+        <path id="access-path" class="access-path" d="M0,108 L52,94 L96,118 L148,58 L196,80 L248,26 L300,70 L344,112 L400,142"/>
+        <circle id="access-dot" class="access-dot" r="4.5" cx="0" cy="108"/>
+      </svg>
+      <span class="badge badge-tp" id="badge-tp">TP alcanzado</span>
+      <span class="badge badge-sl" id="badge-sl">SL alcanzado</span>
+    </div>
+    <div class="access-status" id="access-status">Verificando usuario davidjzegarra…</div>
+  </div>
+</div>
+
+<div id="app">
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark">BT</div>
+      <div>
+        <div class="brand-name">Bitácora de Trading</div>
+        <div class="brand-tag">Sistema de registro de operaciones</div>
+      </div>
+    </div>
+    <div class="clock-box">
+      <div class="clock-time" id="clock-time">--:--:--</div>
+      <div class="clock-date" id="clock-date">—</div>
+      <div class="greeting" id="greeting">—</div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <button class="tool-btn" id="open-calc">
+      <span class="tool-ico">🧮</span>
+      <span>
+        <span class="tool-name">Calculadora de beneficios</span>
+        <span class="tool-sub">Pips, valor por pip y P/L estimado</span>
+      </span>
+    </button>
+  </div>
+
+  <div class="quote-card">
+    <div class="quote-mark">&ldquo;</div>
+    <div style="flex:1">
+      <div class="quote-text" id="quote-text">—</div>
+      <div class="quote-author" id="quote-author">—</div>
+    </div>
+    <div class="quote-idx" id="quote-idx">—</div>
+  </div>
+
+  <div class="stats-row" id="stats-row"></div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div class="panel-title"><span class="sw"></span> Sesiones del mercado</div>
+      <button class="btn" id="refresh-sessions">⟳ Refrescar</button>
+    </div>
+    <div class="sessions-grid">
+      <div class="sclock-wrap">
+        <svg class="sclock" id="sclock" viewBox="0 0 240 240"></svg>
+      </div>
+      <div>
+        <div class="sess-list" id="sess-list"></div>
+      </div>
+    </div>
+    <div class="utc-now" id="utc-now">UTC —:—:—</div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div class="panel-title"><span class="sw"></span> Pares en sesión</div>
+      <button class="btn" id="refresh-pairs">⟳ Refrescar</button>
+    </div>
+    <div class="pairs-grid" id="pairs-grid"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div class="panel-title"><span class="sw"></span> Calendario económico</div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn" id="refresh-calendar">⟳ Refrescar</button>
+        <a class="btn primary" href="https://www.tradingview.com/economic-calendar/" target="_blank" rel="noopener">Ver en vivo ↗</a>
+      </div>
+    </div>
+    <div class="cal-list" id="cal-list"></div>
+    <div class="cal-note">Agenda de referencia con los eventos de mayor impacto que suelen publicarse cada semana (horarios aproximados en UTC). Para datos y horarios exactos en tiempo real, usa "Ver en vivo".</div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div class="panel-title"><span class="sw"></span> Registro de operaciones</div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn primary" id="add-row">+ Nueva operación</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="op-table">
+        <thead>
+          <tr>
+            <th>Par / Activo</th>
+            <th>Punto de entrada</th>
+            <th class="tp-col">TP</th>
+            <th class="sl-col">SL</th>
+            <th class="gan-col">Ganancia esperada</th>
+            <th class="perd-col">Pérdida esperada</th>
+            <th>Cerré con</th>
+            <th>Operación</th>
+            <th>Balance inicial</th>
+            <th>Broker</th>
+            <th>Comentario sobre la posición</th>
+            <th class="row-actions"></th>
+          </tr>
+        </thead>
+        <tbody id="op-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="foot">
+    Los datos se guardan solo en este navegador. &middot;
+    <button id="logout-btn">Cerrar sesión</button>
+  </footer>
+</div>
+
+<div class="modal-overlay" id="calc-overlay" aria-hidden="true">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title">🧮 Calculadora de beneficios</div>
+      <button class="modal-close" id="calc-close" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="calc-grid">
+        <div class="calc-field">
+          <label for="calc-pair">Par / Activo</label>
+          <select id="calc-pair"></select>
+        </div>
+        <div class="calc-field">
+          <label>Dirección</label>
+          <div class="dir-toggle">
+            <button type="button" class="dir-btn active" data-dir="buy">Compra</button>
+            <button type="button" class="dir-btn" data-dir="sell">Venta</button>
+          </div>
+        </div>
+        <div class="calc-field">
+          <label for="calc-lots">Tamaño (lotes)</label>
+          <input type="number" id="calc-lots" value="1" min="0.01" step="0.01"/>
+        </div>
+        <div class="calc-field">
+          <label for="calc-lev">Apalancamiento</label>
+          <select id="calc-lev">
+            <option value="30">1:30</option>
+            <option value="50">1:50</option>
+            <option value="100" selected>1:100</option>
+            <option value="200">1:200</option>
+            <option value="500">1:500</option>
+          </select>
+        </div>
+        <div class="calc-field">
+          <label for="calc-entry">Precio de entrada</label>
+          <input type="number" id="calc-entry" value="0" step="any"/>
+        </div>
+        <div class="calc-field">
+          <label for="calc-exit">Precio de salida</label>
+          <input type="number" id="calc-exit" value="0" step="any"/>
+        </div>
+      </div>
+
+      <div class="calc-results">
+        <div class="calc-result"><div class="cr-label">Pips</div><div class="cr-value" id="cr-pips">0.0</div></div>
+        <div class="calc-result"><div class="cr-label">Valor por pip</div><div class="cr-value" id="cr-pipvalue">$0.00</div></div>
+        <div class="calc-result"><div class="cr-label">Margen requerido</div><div class="cr-value" id="cr-margin">$0.00</div></div>
+        <div class="calc-result profit"><div class="cr-label">Beneficio / Pérdida</div><div class="cr-value" id="cr-profit">$0.00</div></div>
+      </div>
+      <div class="calc-note" id="calc-note">Cálculo estimado con tamaño de contrato estándar (100,000 unidades para pares FX). No incluye spread, comisiones ni swap.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var USERNAME = "davidjzegarra";
+  var PASSWORD = "70507024";
+  var STORAGE_KEY = "bz_trading_rows_v1";
+  var SESSION_KEY = "bz_session_v1";
+
+  var QUOTES = [
+    {t:"El mejor momento para plantar un árbol fue hace 20 años. El segundo mejor momento es ahora.", a:"Proverbio chino"},
+    {t:"Tu tiempo es limitado, no lo desperdicies viviendo la vida de otro.", a:"Steve Jobs"},
+    {t:"No tengas miedo de renunciar a lo bueno para ir por lo grandioso.", a:"John D. Rockefeller"},
+    {t:"El riesgo viene de no saber lo que estás haciendo.", a:"Warren Buffett"},
+    {t:"La disciplina es el puente entre las metas y los logros.", a:"Jim Rohn"},
+    {t:"Si no construyes tu sueño, alguien te contratará para construir el suyo.", a:"Tony Gaskins"},
+    {t:"El éxito es la suma de pequeños esfuerzos repetidos día tras día.", a:"Robert Collier"},
+    {t:"No midas tu progreso comparándote con otros, mídelo contra quien eras ayer.", a:"Naval Ravikant"},
+    {t:"La paciencia es amarga, pero su fruto es dulce.", a:"Aristóteles"},
+    {t:"Un inversor inteligente es un realista que vende a optimistas y compra a pesimistas.", a:"Benjamin Graham"},
+    {t:"No busques ser un hombre de éxito, busca ser un hombre de valor.", a:"Albert Einstein"},
+    {t:"El mercado puede permanecer irracional más tiempo del que tú puedes permanecer solvente.", a:"John Maynard Keynes"},
+    {t:"Controla lo que puedas controlar: tu proceso, no el resultado.", a:"Marcus Aurelius"},
+    {t:"El fracaso es simplemente la oportunidad de comenzar de nuevo, esta vez con más inteligencia.", a:"Henry Ford"},
+    {t:"La riqueza consiste mucho más en el disfrute que en la posesión.", a:"Aristóteles"},
+    {t:"Haz lo que puedas, con lo que tengas, donde estés.", a:"Theodore Roosevelt"},
+    {t:"No hay atajos para ningún lugar que valga la pena ir.", a:"Beverly Sills"},
+    {t:"La regla número uno es no perder dinero. La regla número dos es no olvidar la regla número uno.", a:"Warren Buffett"},
+    {t:"Piensa en grande, comienza pequeño, muévete rápido.", a:"Jeff Bezos"},
+    {t:"Es muy difícil que un mercado alcista te haga rico si vendes en cuanto sube un poco.", a:"Peter Lynch"},
+    {t:"El único lugar donde el éxito viene antes que el trabajo es en el diccionario.", a:"Vidal Sassoon"},
+    {t:"Si algo es importante y quieres que suceda, hazlo aunque las probabilidades no estén a tu favor.", a:"Elon Musk"},
+    {t:"La mejor inversión que puedes hacer es en ti mismo.", a:"Warren Buffett"},
+    {t:"No temas a la perfección, nunca la alcanzarás.", a:"Salvador Dalí"},
+    {t:"Empieza donde estás, usa lo que tienes, haz lo que puedas.", a:"Arthur Ashe"},
+    {t:"El dinero es un mal amo pero un gran sirviente.", a:"P.T. Barnum"},
+    {t:"Un objetivo sin un plan es solo un deseo.", a:"Antoine de Saint-Exupéry"},
+    {t:"El mercado premia la paciencia, no la predicción.", a:"Peter Lynch"},
+    {t:"El hombre que mueve una montaña empieza cargando piedras pequeñas.", a:"Confucio"},
+    {t:"Diversifica pero no diluyas tu convicción.", a:"Charlie Munger"},
+    {t:"La suerte es lo que sucede cuando la preparación se encuentra con la oportunidad.", a:"Séneca"},
+    {t:"Invierte en tus errores; son la matrícula de la experiencia.", a:"Naval Ravikant"},
+    {t:"Corta tus pérdidas rápido y deja correr tus ganancias.", a:"Jesse Livermore"},
+    {t:"No hagas de una sola operación tu identidad; hazla de tu proceso.", a:"Mark Douglas"},
+    {t:"El emprendimiento consiste en saltar del acantilado y construir el avión en el camino.", a:"Reid Hoffman"},
+    {t:"Si duplicas la tasa de fallos, duplicarás tu tasa de éxito.", a:"Thomas Watson"},
+    {t:"Sé codicioso cuando otros tienen miedo, y temeroso cuando otros son codiciosos.", a:"Warren Buffett"},
+    {t:"El costo de un pensamiento es mayor que el costo de un error.", a:"Peter Drucker"},
+    {t:"No es la especie más fuerte la que sobrevive, sino la que mejor se adapta al cambio.", a:"Charles Darwin"},
+    {t:"El dinero nunca hace al hombre feliz, ni lo hará; no hay nada en su naturaleza que produzca felicidad.", a:"Benjamin Franklin"},
+    {t:"Trabaja duro en silencio, deja que el éxito haga el ruido.", a:"Frank Ocean"},
+    {t:"La forma en que empiezas cada día determina cómo vivirás cada día.", a:"Robin Sharma"},
+    {t:"El capital va donde es bienvenido y se queda donde es bien tratado.", a:"Walter Wriston"},
+    {t:"Un pesimista ve la dificultad en cada oportunidad; un optimista ve la oportunidad en cada dificultad.", a:"Winston Churchill"},
+    {t:"No cuentes los días, haz que los días cuenten.", a:"Muhammad Ali"},
+    {t:"La grandeza no llega por accidente, llega por consistencia.", a:"Anónimo"}
+  ];
+
+  function pad(n){ return n < 10 ? "0"+n : ""+n; }
+
+  function dayOfYear(d){
+    var start = new Date(d.getFullYear(), 0, 0);
+    var diff = d - start;
+    return Math.floor(diff / 86400000);
+  }
+
+  function greetingFor(hour){
+    if (hour >= 5 && hour < 12) return "BUENOS DÍAS, DAVID";
+    if (hour >= 12 && hour < 19) return "BUENAS TARDES, DAVID";
+    return "BUENAS NOCHES, DAVID";
+  }
+
+  function updateClock(){
+    var now = new Date();
+    var time = pad(now.getHours())+":"+pad(now.getMinutes())+":"+pad(now.getSeconds());
+    var dateStr = now.toLocaleDateString("es-ES", { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    document.getElementById("clock-time").textContent = time;
+    document.getElementById("clock-date").textContent = dateStr;
+    document.getElementById("greeting").textContent = greetingFor(now.getHours());
+  }
+
+  function renderQuote(){
+    var idx = dayOfYear(new Date()) % QUOTES.length;
+    var q = QUOTES[idx];
+    document.getElementById("quote-text").textContent = "“" + q.t + "”";
+    document.getElementById("quote-author").textContent = "— " + q.a;
+    document.getElementById("quote-idx").textContent = (idx+1) + " / " + QUOTES.length;
+  }
+
+  var DEFAULT_ROWS = [
+    { pair:"XAUUSD", entry:"", tp:"", sl:"", gan:"", perd:"", close:"", result:"", balance:"", broker:"", comment:"" },
+    { pair:"EURUSD", entry:"", tp:"", sl:"", gan:"", perd:"", close:"", result:"", balance:"", broker:"", comment:"" }
+  ];
+
+  function loadRows(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    }catch(e){}
+    return DEFAULT_ROWS.slice();
+  }
+
+  function saveRows(rows){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(rows)); }catch(e){}
+  }
+
+  var rows = loadRows();
+
+  function readRowsFromDOM(){
+    var trs = document.querySelectorAll("#op-tbody tr");
+    var out = [];
+    trs.forEach(function(tr){
+      var cells = tr.querySelectorAll("td[contenteditable]");
+      var select = tr.querySelector("select");
+      out.push({
+        pair: cells[0].textContent.trim(),
+        entry: cells[1].textContent.trim(),
+        tp: cells[2].textContent.trim(),
+        sl: cells[3].textContent.trim(),
+        gan: cells[4].textContent.trim(),
+        perd: cells[5].textContent.trim(),
+        close: cells[6].textContent.trim(),
+        result: select ? select.value : "",
+        balance: cells[7].textContent.trim(),
+        broker: cells[8].textContent.trim(),
+        comment: cells[9].textContent.trim()
+      });
+    });
+    return out;
+  }
+
+  function persist(){
+    rows = readRowsFromDOM();
+    saveRows(rows);
+    renderStats();
+  }
+
+  function ph(txt){ return txt ? "" : ""; }
+
+  function makeRow(row){
+    var tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td contenteditable="true" data-ph="ej. XAUUSD" class="pair-cell">'+escapeHtml(row.pair||"")+'</td>'+
+      '<td contenteditable="true" data-ph="0.00">'+escapeHtml(row.entry||"")+'</td>'+
+      '<td contenteditable="true" data-ph="0.00" class="tp-cell">'+escapeHtml(row.tp||"")+'</td>'+
+      '<td contenteditable="true" data-ph="0.00" class="sl-cell">'+escapeHtml(row.sl||"")+'</td>'+
+      '<td contenteditable="true" data-ph="$ / pips">'+escapeHtml(row.gan||"")+'</td>'+
+      '<td contenteditable="true" data-ph="$ / pips">'+escapeHtml(row.perd||"")+'</td>'+
+      '<td contenteditable="true" data-ph="precio">'+escapeHtml(row.close||"")+'</td>'+
+      '<td></td>'+
+      '<td contenteditable="true" data-ph="$ 0.00">'+escapeHtml(row.balance||"")+'</td>'+
+      '<td contenteditable="true" data-ph="ej. IC Markets">'+escapeHtml(row.broker||"")+'</td>'+
+      '<td contenteditable="true" data-ph="notas de la operación" class="comment-col">'+escapeHtml(row.comment||"")+'</td>'+
+      '<td class="row-actions"><button class="del-row" title="Eliminar fila">✕</button></td>';
+
+    var resultTd = tr.children[7];
+    var select = document.createElement("select");
+    select.className = "result-select";
+    select.innerHTML = '<option value="">— pendiente —</option><option value="TP">Gana (TP)</option><option value="SL">Pierde (SL)</option><option value="BE">Break-even</option>';
+    select.value = row.result || "";
+    select.setAttribute("data-v", select.value);
+    select.addEventListener("change", function(){
+      select.setAttribute("data-v", select.value);
+      persist();
+    });
+    resultTd.appendChild(select);
+
+    tr.querySelectorAll("td[contenteditable]").forEach(function(td){
+      td.addEventListener("blur", persist);
+      td.addEventListener("keydown", function(e){
+        if (e.key === "Enter"){ e.preventDefault(); td.blur(); }
+      });
+    });
+
+    tr.querySelector(".del-row").addEventListener("click", function(){
+      tr.remove();
+      persist();
+    });
+
+    return tr;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+
+  function renderTable(){
+    var tbody = document.getElementById("op-tbody");
+    tbody.innerHTML = "";
+    rows.forEach(function(r){ tbody.appendChild(makeRow(r)); });
+  }
+
+  function renderStats(){
+    var wrap = document.getElementById("stats-row");
+    var total = rows.length;
+    var wins = rows.filter(function(r){ return r.result === "TP"; }).length;
+    var losses = rows.filter(function(r){ return r.result === "SL"; }).length;
+    var pending = total - wins - losses;
+    var winrate = (wins+losses) > 0 ? Math.round((wins/(wins+losses))*100) : 0;
+    wrap.innerHTML =
+      '<div class="stat"><div class="stat-label">Operaciones</div><div class="stat-value">'+total+'</div></div>'+
+      '<div class="stat green"><div class="stat-label">Ganadas</div><div class="stat-value">'+wins+'</div></div>'+
+      '<div class="stat"><div class="stat-label" style="color:var(--red)">Perdidas</div><div class="stat-value" style="color:var(--red)">'+losses+'</div></div>'+
+      '<div class="stat gold"><div class="stat-label">Winrate</div><div class="stat-value">'+winrate+'%</div></div>'+
+      '<div class="stat"><div class="stat-label">Pendientes</div><div class="stat-value">'+pending+'</div></div>';
+  }
+
+  document.getElementById("add-row").addEventListener("click", function(){
+    var tbody = document.getElementById("op-tbody");
+    tbody.appendChild(makeRow({pair:"",entry:"",tp:"",sl:"",gan:"",perd:"",close:"",result:"",balance:"",broker:"",comment:""}));
+    persist();
+  });
+
+  /* ---------- sesiones de mercado (24h) ---------- */
+  var SESSIONS = [
+    { key:"syd", name:"Sídney",     short:"SYD", openUTC:22, closeUTC:7,  color:"#93a29c" },
+    { key:"tok", name:"Tokio",      short:"TOK", openUTC:0,  closeUTC:9,  color:"#6fa8dc" },
+    { key:"lon", name:"Londres",    short:"LON", openUTC:8,  closeUTC:17, color:"#d6ae66" },
+    { key:"ny",  name:"Nueva York", short:"NY",  openUTC:13, closeUTC:22, color:"#48d89a" }
+  ];
+  var SESSION_BY_KEY = {};
+  SESSIONS.forEach(function(s){ SESSION_BY_KEY[s.key] = s; });
+
+  function getHourFrac(){
+    var n = new Date();
+    return n.getUTCHours() + n.getUTCMinutes()/60 + n.getUTCSeconds()/3600;
+  }
+  function isOpen(s, hourFrac){
+    if (s.openUTC < s.closeUTC) return hourFrac >= s.openUTC && hourFrac < s.closeUTC;
+    return hourFrac >= s.openUTC || hourFrac < s.closeUTC;
+  }
+  function sessionArcs(s){
+    if (s.openUTC < s.closeUTC) return [[s.openUTC*15, s.closeUTC*15]];
+    return [[s.openUTC*15, 360], [0, s.closeUTC*15]];
+  }
+  function polarPt(cx, cy, r, angleDeg){
+    var rad = angleDeg * Math.PI / 180;
+    return { x: cx + r*Math.sin(rad), y: cy - r*Math.cos(rad) };
+  }
+  function describeArc(cx, cy, r, a0, a1){
+    var p0 = polarPt(cx, cy, r, a0);
+    var p1 = polarPt(cx, cy, r, a1);
+    var large = (a1 - a0) > 180 ? 1 : 0;
+    return ["M", p0.x, p0.y, "A", r, r, 0, large, 1, p1.x, p1.y].join(" ");
+  }
+
+  function drawClock(){
+    var svg = document.getElementById("sclock");
+    if (!svg) return;
+    var cx = 120, cy = 120;
+    var hourFrac = getHourFrac();
+    var handAngle = hourFrac * 15;
+    var parts = ['<circle class="sclock-face" cx="120" cy="120" r="112"/>'];
+
+    for (var h = 0; h < 24; h++){
+      var big = (h % 6 === 0);
+      var a = h * 15;
+      var p1 = polarPt(cx, cy, big ? 100 : 106, a);
+      var p2 = polarPt(cx, cy, 112, a);
+      parts.push('<line class="sclock-tick" x1="'+p1.x+'" y1="'+p1.y+'" x2="'+p2.x+'" y2="'+p2.y+'"'+(big ? ' stroke-width="1.5"' : '')+'/>');
+      if (big){
+        var lp = polarPt(cx, cy, 88, a);
+        parts.push('<text class="sclock-label" x="'+lp.x+'" y="'+(lp.y+2)+'" text-anchor="middle">'+pad(h)+'</text>');
+      }
+    }
+
+    var rings = [100, 86, 72, 58];
+    SESSIONS.forEach(function(s, i){
+      var r = rings[i];
+      sessionArcs(s).forEach(function(seg){
+        parts.push('<path class="sclock-arc" d="'+describeArc(cx, cy, r, seg[0], seg[1])+'" stroke="'+s.color+'"/>');
+      });
+    });
+
+    var hp = polarPt(cx, cy, 80, handAngle);
+    parts.push('<line class="sclock-hand" x1="120" y1="120" x2="'+hp.x+'" y2="'+hp.y+'"/>');
+    parts.push('<circle class="sclock-hub" cx="120" cy="120" r="4"/>');
+
+    svg.innerHTML = parts.join("");
+  }
+
+  function renderSessions(){
+    var hourFrac = getHourFrac();
+    var wrap = document.getElementById("sess-list");
+    if (!wrap) return;
+    wrap.innerHTML = SESSIONS.map(function(s){
+      var open = isOpen(s, hourFrac);
+      var dotStyle = open ? ' style="background:'+s.color+';box-shadow:0 0 7px '+s.color+';"' : '';
+      return '<div class="sess-row'+(open ? ' open' : '')+'">'+
+        '<span class="sess-dot"'+dotStyle+'></span>'+
+        '<span class="sess-name">'+s.name+'</span>'+
+        '<span class="sess-hours">'+pad(s.openUTC)+':00–'+pad(s.closeUTC)+':00 UTC</span>'+
+        '<span class="sess-state">'+(open ? 'Abierta' : 'Cerrada')+'</span>'+
+      '</div>';
+    }).join("");
+    var now = new Date();
+    var utcNow = document.getElementById("utc-now");
+    if (utcNow) utcNow.textContent = "UTC "+pad(now.getUTCHours())+":"+pad(now.getUTCMinutes())+":"+pad(now.getUTCSeconds());
+  }
+
+  /* ---------- pares en sesión ---------- */
+  var PAIRS = [
+    { sym:"EURUSD", sessions:["lon","ny"] },
+    { sym:"GBPUSD", sessions:["lon","ny"] },
+    { sym:"USDJPY", sessions:["tok","ny"] },
+    { sym:"AUDUSD", sessions:["syd","tok"] },
+    { sym:"USDCHF", sessions:["lon","ny"] },
+    { sym:"USDCAD", sessions:["ny"] },
+    { sym:"NZDUSD", sessions:["syd","tok"] },
+    { sym:"EURJPY", sessions:["tok","lon"] },
+    { sym:"GBPJPY", sessions:["tok","lon"] },
+    { sym:"XAUUSD", sessions:["lon","ny"] }
+  ];
+
+  function renderPairs(){
+    var wrap = document.getElementById("pairs-grid");
+    if (!wrap) return;
+    var hourFrac = getHourFrac();
+    var openKeys = SESSIONS.filter(function(s){ return isOpen(s, hourFrac); }).map(function(s){ return s.key; });
+    wrap.innerHTML = PAIRS.map(function(p){
+      var openCount = p.sessions.filter(function(k){ return openKeys.indexOf(k) !== -1; }).length;
+      var liq = openCount >= 2 ? "high" : (openCount === 1 ? "mid" : "low");
+      var liqLabel = openCount >= 2 ? "Alta liquidez" : (openCount === 1 ? "Liquidez normal" : "Liquidez baja");
+      var sessNames = p.sessions.map(function(k){
+        var s = SESSION_BY_KEY[k];
+        return s.short + (openKeys.indexOf(k) !== -1 ? " ●" : "");
+      }).join(" · ");
+      return '<div class="pair-card"><div class="pc-sym">'+p.sym+'</div><div class="pc-sessions">'+sessNames+'</div><span class="pc-liq '+liq+'">'+liqLabel+'</span></div>';
+    }).join("");
+  }
+
+  /* ---------- calendario económico (agenda de referencia) ---------- */
+  var DAY_ORDER = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+  var CAL_EVENTS = [
+    { day:"Lunes",     time:"09:00", ev:"PMI Manufacturero", cur:"EUR", impact:"medium" },
+    { day:"Martes",    time:"13:30", ev:"Balanza comercial",  cur:"USD", impact:"low" },
+    { day:"Miércoles", time:"12:15", ev:"Nómina privada ADP", cur:"USD", impact:"medium" },
+    { day:"Miércoles", time:"18:00", ev:"Decisión de tipos — FOMC", cur:"USD", impact:"high" },
+    { day:"Jueves",    time:"11:45", ev:"Decisión de tipos — BCE",  cur:"EUR", impact:"high" },
+    { day:"Jueves",    time:"12:30", ev:"Solicitudes de subsidio por desempleo", cur:"USD", impact:"medium" },
+    { day:"Viernes",   time:"12:30", ev:"Nóminas no agrícolas — NFP", cur:"USD", impact:"high" },
+    { day:"Viernes",   time:"13:00", ev:"Tasa de desempleo",  cur:"USD", impact:"medium" }
+  ];
+
+  function renderCalendar(){
+    var list = document.getElementById("cal-list");
+    if (!list) return;
+    var now = new Date();
+    var todayIdx = (now.getUTCDay() + 6) % 7;
+    var nowMinutes = now.getUTCHours()*60 + now.getUTCMinutes();
+    var withDiff = CAL_EVENTS.map(function(e){
+      var dIdx = DAY_ORDER.indexOf(e.day);
+      var tp = e.time.split(":");
+      var mins = parseInt(tp[0],10)*60 + parseInt(tp[1],10);
+      var diff = ((dIdx - todayIdx + 7) % 7) * 1440 + (mins - nowMinutes);
+      if (diff < 0) diff += 7*1440;
+      var copy = {}; for (var k in e){ copy[k]=e[k]; } copy.diff = diff;
+      return copy;
+    });
+    withDiff.sort(function(a,b){ return a.diff - b.diff; });
+    var nextDiff = withDiff.length ? withDiff[0].diff : null;
+    list.innerHTML = withDiff.map(function(e){
+      var isNext = e.diff === nextDiff;
+      var rowStyle = isNext ? ' style="border-color:var(--gold); box-shadow:0 0 0 1px var(--gold) inset;"' : "";
+      return '<div class="cal-row"'+rowStyle+'>'+
+        '<div class="cal-day">'+e.day+'</div>'+
+        '<div class="cal-time">'+e.time+'</div>'+
+        '<div class="cal-event"><span class="cal-impact '+e.impact+'"><i></i><i></i><i></i></span>'+escapeHtml(e.ev)+(isNext ? ' <span style="color:var(--gold); font-size:9.5px;">· próximo</span>' : '')+'</div>'+
+        '<div class="cal-cur">'+e.cur+'</div>'+
+      '</div>';
+    }).join("");
+  }
+
+  function pulseBtn(btn){
+    btn.style.borderColor = "var(--gold)";
+    setTimeout(function(){ btn.style.borderColor = ""; }, 350);
+  }
+
+  /* ---------- calculadora de beneficios ---------- */
+  var CALC_PAIRS = [
+    { sym:"EURUSD", pip:0.0001, contract:100000, quote:"USD", mode:"direct" },
+    { sym:"GBPUSD", pip:0.0001, contract:100000, quote:"USD", mode:"direct" },
+    { sym:"AUDUSD", pip:0.0001, contract:100000, quote:"USD", mode:"direct" },
+    { sym:"NZDUSD", pip:0.0001, contract:100000, quote:"USD", mode:"direct" },
+    { sym:"USDJPY", pip:0.01,   contract:100000, quote:"JPY", mode:"selfConvert" },
+    { sym:"USDCHF", pip:0.0001, contract:100000, quote:"CHF", mode:"selfConvert" },
+    { sym:"USDCAD", pip:0.0001, contract:100000, quote:"CAD", mode:"selfConvert" },
+    { sym:"XAUUSD", pip:0.01,   contract:100,    quote:"USD", mode:"direct" },
+    { sym:"XAGUSD", pip:0.001,  contract:5000,   quote:"USD", mode:"direct" }
+  ];
+
+  function formatMoney(n){
+    if (!isFinite(n)) n = 0;
+    return n.toLocaleString("en-US", { minimumFractionDigits:2, maximumFractionDigits:2 });
+  }
+
+  function populateCalcPairs(){
+    var sel = document.getElementById("calc-pair");
+    if (!sel) return;
+    sel.innerHTML = CALC_PAIRS.map(function(p){ return '<option value="'+p.sym+'">'+p.sym+'</option>'; }).join("");
+  }
+
+  function runCalc(){
+    var pairSel = document.getElementById("calc-pair");
+    if (!pairSel) return;
+    var p = CALC_PAIRS.filter(function(x){ return x.sym === pairSel.value; })[0] || CALC_PAIRS[0];
+    var lots = parseFloat(document.getElementById("calc-lots").value) || 0;
+    var lev = parseFloat(document.getElementById("calc-lev").value) || 100;
+    var entry = parseFloat(document.getElementById("calc-entry").value) || 0;
+    var exit = parseFloat(document.getElementById("calc-exit").value) || 0;
+    var dirBtn = document.querySelector(".dir-btn.active");
+    var sign = (dirBtn && dirBtn.getAttribute("data-dir") === "sell") ? -1 : 1;
+
+    var pips = entry ? ((exit - entry) / p.pip) * sign : 0;
+    var rawDiff = (exit - entry) * sign;
+    var rawProfit = rawDiff * p.contract * lots;
+    var pipValueRaw = p.pip * p.contract * lots;
+
+    var profitUSD, pipValueUSD, marginUSD;
+    if (p.mode === "direct"){
+      profitUSD = rawProfit;
+      pipValueUSD = pipValueRaw;
+      marginUSD = entry ? (p.contract * lots * entry) / lev : 0;
+    } else {
+      profitUSD = entry ? rawProfit / entry : 0;
+      pipValueUSD = entry ? pipValueRaw / entry : 0;
+      marginUSD = (p.contract * lots) / lev;
+    }
+
+    document.getElementById("cr-pips").textContent = isFinite(pips) ? pips.toFixed(1) : "0.0";
+    document.getElementById("cr-pipvalue").textContent = "$" + formatMoney(pipValueUSD);
+    document.getElementById("cr-margin").textContent = "$" + formatMoney(marginUSD);
+    var profitEl = document.getElementById("cr-profit");
+    profitEl.textContent = (profitUSD >= 0 ? "+$" : "-$") + formatMoney(Math.abs(profitUSD));
+    profitEl.classList.toggle("pos", profitUSD >= 0);
+    profitEl.classList.toggle("neg", profitUSD < 0);
+  }
+
+  function openCalc(){
+    document.getElementById("calc-overlay").classList.add("show");
+    runCalc();
+  }
+  function closeCalc(){
+    document.getElementById("calc-overlay").classList.remove("show");
+  }
+
+  function wireCalc(){
+    populateCalcPairs();
+    document.getElementById("calc-entry").value = "1.0850";
+    document.getElementById("calc-exit").value = "1.0900";
+    document.getElementById("open-calc").addEventListener("click", openCalc);
+    document.getElementById("calc-close").addEventListener("click", closeCalc);
+    document.getElementById("calc-overlay").addEventListener("click", function(e){
+      if (e.target.id === "calc-overlay") closeCalc();
+    });
+    document.querySelectorAll(".dir-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        document.querySelectorAll(".dir-btn").forEach(function(b){ b.classList.remove("active"); });
+        btn.classList.add("active");
+        runCalc();
+      });
+    });
+    ["calc-pair","calc-lots","calc-lev","calc-entry","calc-exit"].forEach(function(id){
+      var el = document.getElementById(id);
+      el.addEventListener("input", runCalc);
+      el.addEventListener("change", runCalc);
+    });
+    runCalc();
+  }
+
+  function wireWidgets(){
+    document.getElementById("refresh-sessions").addEventListener("click", function(){
+      drawClock(); renderSessions(); pulseBtn(this);
+    });
+    document.getElementById("refresh-pairs").addEventListener("click", function(){
+      renderPairs(); pulseBtn(this);
+    });
+    document.getElementById("refresh-calendar").addEventListener("click", function(){
+      renderCalendar(); pulseBtn(this);
+    });
+  }
+
+  function boot(){
+    renderTable();
+    renderStats();
+    renderQuote();
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    drawClock();
+    renderSessions();
+    renderPairs();
+    renderCalendar();
+    setInterval(function(){ drawClock(); renderSessions(); renderPairs(); }, 15000);
+    setInterval(renderCalendar, 60000);
+
+    wireCalc();
+    wireWidgets();
+  }
+
+  function showApp(){
+    document.getElementById("gate").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    boot();
+  }
+
+  /* ---------- sonido sintetizado (Web Audio, sin archivos externos) ---------- */
+  var actx = null;
+  function ensureAudio(){
+    if (!actx){
+      try{ actx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ actx = null; }
+    }
+    if (actx && actx.state === "suspended"){ try{ actx.resume(); }catch(e){} }
+    return actx;
+  }
+  function beep(freqStart, freqEnd, duration, type, delay, peak){
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var t0 = ctx.currentTime + (delay || 0);
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.setValueAtTime(freqStart, t0);
+    if (freqEnd && freqEnd !== freqStart){
+      osc.frequency.exponentialRampToValueAtTime(Math.max(freqEnd, 1), t0 + duration);
+    }
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(peak || 0.16, t0 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.03);
+  }
+  function playTPChime(){
+    beep(740, 740, 0.13, "sine", 0, 0.15);
+    beep(1108, 1108, 0.2, "sine", 0.11, 0.16);
+  }
+  function playSLBuzz(){
+    beep(260, 130, 0.34, "sawtooth", 0, 0.11);
+  }
+  function playAccessGranted(){
+    beep(660, 660, 0.09, "triangle", 0, 0.13);
+    beep(880, 880, 0.09, "triangle", 0.09, 0.13);
+    beep(1320, 1320, 0.22, "triangle", 0.18, 0.15);
+  }
+
+  /* ---------- animación TP / SL de acceso ---------- */
+  function runAccessAnimation(onDone){
+    var overlay = document.getElementById("access-overlay");
+    var label = document.getElementById("access-label");
+    var status = document.getElementById("access-status");
+    var path = document.getElementById("access-path");
+    var dot = document.getElementById("access-dot");
+    var badgeTp = document.getElementById("badge-tp");
+    var badgeSl = document.getElementById("badge-sl");
+
+    badgeTp.classList.remove("show");
+    badgeSl.classList.remove("show");
+    overlay.classList.remove("flash-tp", "flash-sl");
+    label.textContent = "Simulando operación de acceso…";
+    label.style.color = "";
+    status.textContent = "Verificando usuario " + USERNAME + "…";
+    status.classList.remove("ok");
+    overlay.classList.add("show");
+
+    var len = path.getTotalLength();
+    var DURATION = 1700;
+    var tpFired = false, slFired = false;
+    var start = null;
+
+    function frame(ts){
+      if (!start) start = ts;
+      var t = Math.min(1, (ts - start) / DURATION);
+      var dist = t * len;
+      var pt = path.getPointAtLength(dist);
+      dot.setAttribute("cx", pt.x);
+      dot.setAttribute("cy", pt.y);
+
+      if (!tpFired && pt.y <= 32){
+        tpFired = true;
+        badgeTp.classList.add("show");
+        overlay.classList.remove("flash-tp"); void overlay.offsetWidth; overlay.classList.add("flash-tp");
+        label.textContent = "Take Profit alcanzado";
+        label.style.color = "var(--green)";
+        playTPChime();
+      }
+      if (!slFired && pt.y >= 136){
+        slFired = true;
+        badgeSl.classList.add("show");
+        overlay.classList.remove("flash-sl"); void overlay.offsetWidth; overlay.classList.add("flash-sl");
+        label.textContent = "Stop Loss tocado";
+        label.style.color = "var(--red)";
+        playSLBuzz();
+      }
+
+      if (t < 1){
+        requestAnimationFrame(frame);
+      } else {
+        label.textContent = "Acceso concedido";
+        label.style.color = "var(--gold)";
+        status.textContent = "Bienvenido, David";
+        status.classList.add("ok");
+        playAccessGranted();
+        setTimeout(function(){
+          overlay.style.transition = "opacity .35s ease";
+          overlay.style.opacity = "0";
+          setTimeout(function(){
+            overlay.classList.remove("show");
+            overlay.style.opacity = "";
+            overlay.style.transition = "";
+            onDone();
+          }, 350);
+        }, 650);
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  document.getElementById("gate-form").addEventListener("submit", function(e){
+    e.preventDefault();
+    var u = document.getElementById("user").value.trim();
+    var p = document.getElementById("pass").value;
+    var err = document.getElementById("gate-error");
+    if (u === USERNAME && p === PASSWORD){
+      err.textContent = "";
+      ensureAudio();
+      try{ sessionStorage.setItem(SESSION_KEY, "1"); }catch(e){}
+      runAccessAnimation(showApp);
+    } else {
+      err.textContent = "Usuario o contraseña incorrectos.";
+    }
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", function(){
+    try{ sessionStorage.removeItem(SESSION_KEY); }catch(e){}
+    document.getElementById("app").style.display = "none";
+    document.getElementById("gate").style.display = "flex";
+    document.getElementById("user").value = "";
+    document.getElementById("pass").value = "";
+  });
+
+  try{
+    if (sessionStorage.getItem(SESSION_KEY) === "1"){ showApp(); }
+  }catch(e){}
+})();
+</script>
